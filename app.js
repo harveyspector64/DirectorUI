@@ -1,12 +1,18 @@
 const state = {
   data: null,
   rows: [],
+  filtered: [],
+  page: 1,
 };
 
 const els = {
   stats: document.getElementById('stats'),
+  resultSummary: document.getElementById('resultSummary'),
+  activeFilters: document.getElementById('activeFilters'),
+  pager: document.getElementById('pager'),
   resultsBody: document.getElementById('resultsBody'),
   template: document.getElementById('rowTemplate'),
+  preset: document.getElementById('presetFilter'),
   search: document.getElementById('searchInput'),
   tier: document.getElementById('tierFilter'),
   lane: document.getElementById('laneFilter'),
@@ -15,7 +21,10 @@ const els = {
   budget: document.getElementById('budgetFilter'),
   actor: document.getElementById('actorFilter'),
   availability: document.getElementById('availabilityFilter'),
+  sortBy: document.getElementById('sortBy'),
+  pageSize: document.getElementById('pageSize'),
   clear: document.getElementById('clearBtn'),
+  export: document.getElementById('exportBtn'),
 };
 
 const normalize = (v) => (v || '').toLowerCase();
@@ -35,13 +44,20 @@ function buildRows(data) {
   const availabilityByDirector = new Map((data.availability || []).map((r) => [r.Director, r]));
   const boardA = new Set((data.boardA || []).map((r) => r.Director));
 
-  return (data.directors || []).map((d) => ({
-    ...d,
-    actors: [...new Set(actorByDirector.get(d.Director) || [])],
-    next: nextByDirector.get(d.Director) || {},
-    availability: availabilityByDirector.get(d.Director) || {},
-    isBoardA: boardA.has(d.Director),
-  }));
+  return (data.directors || []).map((d) => {
+    const tier = d.Tier || '';
+    const phase = normalize(d.CareerPhase);
+
+    return {
+      ...d,
+      actors: [...new Set(actorByDirector.get(d.Director) || [])],
+      next: nextByDirector.get(d.Director) || {},
+      availability: availabilityByDirector.get(d.Director) || {},
+      isBoardA: boardA.has(d.Director),
+      isWorkman: tier === 'T3',
+      isUpAndComer: tier === 'T5' || phase.includes('breakout'),
+    };
+  });
 }
 
 function fillSelectOptions() {
@@ -79,6 +95,46 @@ function passesMulti(rowValue, selectedSet, split = false) {
   return values.some((v) => selectedSet.has(v));
 }
 
+function applyPreset(rows, preset) {
+  if (preset === 'boardA') return rows.filter((r) => r.isBoardA);
+  if (preset === 'workman') return rows.filter((r) => r.isWorkman);
+  if (preset === 'upcoming') return rows.filter((r) => r.isUpAndComer);
+  return rows;
+}
+
+function sortRows(rows, mode) {
+  const copy = [...rows];
+  const tierValue = (tier) => {
+    const m = (tier || '').match(/T(\d+)/);
+    return m ? Number(m[1]) : 99;
+  };
+
+  if (mode === 'nameDesc') return copy.sort((a, b) => (b.Director || '').localeCompare(a.Director || ''));
+  if (mode === 'tierAsc') return copy.sort((a, b) => tierValue(a.Tier) - tierValue(b.Tier) || (a.Director || '').localeCompare(b.Director || ''));
+  if (mode === 'tierDesc') return copy.sort((a, b) => tierValue(b.Tier) - tierValue(a.Tier) || (a.Director || '').localeCompare(b.Director || ''));
+  return copy.sort((a, b) => (a.Director || '').localeCompare(b.Director || ''));
+}
+
+function getFilterChips() {
+  const chips = [];
+  if (els.preset.value !== 'all') chips.push(`Preset: ${els.preset.options[els.preset.selectedIndex].text}`);
+  if (els.search.value.trim()) chips.push(`Search: ${els.search.value.trim()}`);
+  if (els.actor.value.trim()) chips.push(`Actor: ${els.actor.value.trim()}`);
+  if (els.availability.value.trim()) chips.push(`Availability: ${els.availability.value.trim()}`);
+
+  const addSelected = (label, sel) => {
+    Array.from(sel.selectedOptions).forEach((o) => chips.push(`${label}: ${o.value}`));
+  };
+
+  addSelected('Tier', els.tier);
+  addSelected('Lane', els.lane);
+  addSelected('Tone', els.tone);
+  addSelected('Scale', els.scale);
+  addSelected('Budget', els.budget);
+
+  return chips;
+}
+
 function filterRows() {
   const query = normalize(els.search.value.trim());
   const actorNeedle = normalize(els.actor.value.trim());
@@ -90,7 +146,7 @@ function filterRows() {
   const scaleSet = selected(els.scale);
   const budgetSet = selected(els.budget);
 
-  return state.rows.filter((row) => {
+  const filtered = applyPreset(state.rows, els.preset.value).filter((row) => {
     const hay = normalize([
       row.Director,
       row.PrimaryLane,
@@ -120,6 +176,20 @@ function filterRows() {
 
     return true;
   });
+
+  return sortRows(filtered, els.sortBy.value);
+}
+
+function renderSummary(total, shown, pageSize, page) {
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = total === 0 ? 0 : start + shown - 1;
+
+  els.resultSummary.innerHTML = `<strong>Showing ${start}-${end}</strong> of <strong>${total}</strong> directors. Use Rows=All to force full list in one table.`;
+
+  const chips = getFilterChips();
+  els.activeFilters.innerHTML = chips.length
+    ? `<div>${chips.map((c) => `<span class="filterChip">${c}</span>`).join('')}</div>`
+    : '<div style="color: var(--muted)">No active filters.</div>';
 }
 
 function renderRows(rows) {
@@ -133,7 +203,7 @@ function renderRows(rows) {
     tr.children[3].textContent = row.TonalDNA || '—';
     tr.children[4].textContent = row.ScaleProven || '—';
     tr.children[5].textContent = row.BudgetBandTypical || '—';
-    tr.children[6].innerHTML = row.actors.slice(0, 5).map((a) => `<span class="tag">${a}</span>`).join('') || '—';
+    tr.children[6].innerHTML = row.actors.slice(0, 7).map((a) => `<span class="tag">${a}</span>`).join('') || '—';
 
     const nextProject = row.next.NextProject || 'No current project listed';
     const avail = row.next.Availability || row.availability.CurrentCommitment || 'No availability note';
@@ -144,29 +214,118 @@ function renderRows(rows) {
   els.resultsBody.replaceChildren(frag);
 }
 
-function applyFilters() {
-  const filtered = filterRows();
-  renderStats(filtered);
-  renderRows(filtered);
+function renderPager(total, pageSize) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (state.page > totalPages) state.page = totalPages;
+
+  const prevDisabled = state.page <= 1 ? 'disabled' : '';
+  const nextDisabled = state.page >= totalPages ? 'disabled' : '';
+
+  els.pager.innerHTML = `
+    <button id="prevPage" ${prevDisabled}>Prev</button>
+    <div>Page ${state.page} of ${totalPages}</div>
+    <button id="nextPage" ${nextDisabled}>Next</button>
+  `;
+
+  const prev = document.getElementById('prevPage');
+  const next = document.getElementById('nextPage');
+  if (prev) prev.addEventListener('click', () => {
+    state.page = Math.max(1, state.page - 1);
+    render();
+  });
+  if (next) next.addEventListener('click', () => {
+    state.page = Math.min(totalPages, state.page + 1);
+    render();
+  });
+}
+
+function currentPageRows() {
+  const pageSize = Number(els.pageSize.value);
+  if (pageSize >= 99999) return state.filtered;
+  const start = (state.page - 1) * pageSize;
+  const end = start + pageSize;
+  return state.filtered.slice(start, end);
+}
+
+function exportFilteredCsv() {
+  const cols = ['Director', 'Tier', 'PrimaryLane', 'SecondaryLanes', 'TonalDNA', 'ScaleProven', 'BudgetBandTypical', 'NextProject', 'Availability', 'Actors'];
+  const escape = (v) => `"${String(v || '').replaceAll('"', '""')}"`;
+  const lines = [cols.join(',')];
+
+  for (const row of state.filtered) {
+    lines.push([
+      row.Director,
+      row.Tier,
+      row.PrimaryLane,
+      row.SecondaryLanes,
+      row.TonalDNA,
+      row.ScaleProven,
+      row.BudgetBandTypical,
+      row.next.NextProject,
+      row.next.Availability || row.availability.CurrentCommitment,
+      row.actors.join('; '),
+    ].map(escape).join(','));
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `directors_filtered_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function render() {
+  state.filtered = filterRows();
+  const pageRows = currentPageRows();
+  const pageSize = Number(els.pageSize.value);
+
+  renderStats(state.filtered);
+  renderSummary(state.filtered.length, pageRows.length, pageSize, state.page);
+  renderRows(pageRows);
+  renderPager(state.filtered.length, pageSize);
+}
+
+function resetFilters() {
+  els.preset.value = 'all';
+  els.search.value = '';
+  els.actor.value = '';
+  els.availability.value = '';
+  els.sortBy.value = 'nameAsc';
+  els.pageSize.value = '100';
+
+  [els.tier, els.lane, els.tone, els.scale, els.budget].forEach((sel) => {
+    Array.from(sel.options).forEach((opt) => {
+      opt.selected = false;
+    });
+  });
+
+  state.page = 1;
+  render();
 }
 
 function bindEvents() {
-  [els.search, els.tier, els.lane, els.tone, els.scale, els.budget, els.actor, els.availability].forEach((el) => {
-    el.addEventListener('input', applyFilters);
-    el.addEventListener('change', applyFilters);
+  [els.preset, els.search, els.tier, els.lane, els.tone, els.scale, els.budget, els.actor, els.availability, els.sortBy].forEach((el) => {
+    el.addEventListener('input', () => {
+      state.page = 1;
+      render();
+    });
+    el.addEventListener('change', () => {
+      state.page = 1;
+      render();
+    });
   });
 
-  els.clear.addEventListener('click', () => {
-    els.search.value = '';
-    els.actor.value = '';
-    els.availability.value = '';
-    [els.tier, els.lane, els.tone, els.scale, els.budget].forEach((sel) => {
-      Array.from(sel.options).forEach((opt) => {
-        opt.selected = false;
-      });
-    });
-    applyFilters();
+  els.pageSize.addEventListener('change', () => {
+    state.page = 1;
+    render();
   });
+
+  els.clear.addEventListener('click', resetFilters);
+  els.export.addEventListener('click', exportFilteredCsv);
 }
 
 async function init() {
@@ -176,7 +335,7 @@ async function init() {
 
   fillSelectOptions();
   bindEvents();
-  applyFilters();
+  render();
 }
 
 init().catch((err) => {

@@ -14,7 +14,16 @@ Open `http://localhost:4173`.
 ## Features
 
 - Faceted filters (tier, lane, tonal DNA, scale, budget band)
+- Preset views (All, Board A, Workman pool, Up & Comers)
 - Free text script-matching search
 - Actor attachment filtering from actor matrix relationships
 - Availability-aware results panel with next project context
-- Top metrics for matching count, Board A overlap, and lane coverage
+- Sort + pagination with explicit "Showing X-Y of Z" visibility
+- Export filtered director list to CSV
+
+## Spreadsheet improvements to consider next
+
+- Add a normalized `Tags` column in `UNIVERSE` for reliable semantic matching (e.g. `contained`, `elevated-horror`, `period`, `auteur`, `franchise`).
+- Add `BudgetBandTypical` to all directors (many rows are empty today).
+- Add `AvailabilityCategory` controlled values (`Open`, `Limited`, `Busy`, `Unknown`) for cleaner filtering.
+- Add `PackagingPriority` and `RiskFlag` fields for internal shortlist ranking.
