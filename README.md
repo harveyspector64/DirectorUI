@@ -27,3 +27,25 @@ Open `http://localhost:4173`.
 - Add `BudgetBandTypical` to all directors (many rows are empty today).
 - Add `AvailabilityCategory` controlled values (`Open`, `Limited`, `Busy`, `Unknown`) for cleaner filtering.
 - Add `PackagingPriority` and `RiskFlag` fields for internal shortlist ranking.
+
+## Recommendations: richer director tags + availability
+
+To make filtering feel truly production-grade as data scales, I recommend adding these structured fields to `UNIVERSE`:
+
+- `TagsCreative` (comma-separated controlled vocabulary): `grounded`, `heightened`, `elevated-horror`, `period`, `comedic`, `prestige`, `auteur`, `four-quadrant`.
+- `TagsExecution` : `vfx-heavy`, `practical-stunts`, `contained`, `location-heavy`, `ensemble`, `first-unit-heavy`.
+- `PackagingStrength` (1-5) and `PackageType` (`actor-driven`, `ip-driven`, `financier-friendly`, `festival-awards`).
+- `TalentAffinity` (repeatable): top actor + producer + DP + writer collaborators in normalized helper sheets.
+- `RiskFlags` (multi-tag): `schedule-risk`, `budget-drift-risk`, `tone-risk`, `market-risk`, `availability-risk`.
+
+For availability, move from free text to a hybrid model:
+
+- Keep narrative note (`AvailabilityNote`) but add controlled fields:
+  - `AvailabilityCategory`: `Open`, `Limited`, `Busy`, `Committed`, `Unknown`
+  - `EarliestStartWindow` (date)
+  - `SoftHoldUntil` (date, optional)
+  - `Confidence` (`Low/Med/High`)
+  - `SourceCount` and `LastVerified`
+- Add a derived `AvailabilityScore` (0-100) for ranking in the UI.
+
+This gives you both nuanced context and reliable faceted filtering.

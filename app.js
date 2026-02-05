@@ -31,6 +31,19 @@ const normalize = (v) => (v || '').toLowerCase();
 const splitTags = (v) => (v || '').split(/[;,]/).map((x) => x.trim()).filter(Boolean);
 const selected = (sel) => new Set(Array.from(sel.selectedOptions).map((o) => o.value));
 
+
+function enableToggleMultiSelect(selectEl) {
+  selectEl.addEventListener('mousedown', (event) => {
+    const option = event.target;
+    if (!(option instanceof HTMLOptionElement)) return;
+
+    event.preventDefault();
+    option.selected = !option.selected;
+
+    selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+}
+
 function buildRows(data) {
   const actorByDirector = new Map();
   for (const row of data.actorMatrix || []) {
@@ -308,6 +321,8 @@ function resetFilters() {
 }
 
 function bindEvents() {
+  [els.tier, els.lane, els.tone, els.scale, els.budget].forEach(enableToggleMultiSelect);
+
   [els.preset, els.search, els.tier, els.lane, els.tone, els.scale, els.budget, els.actor, els.availability, els.sortBy].forEach((el) => {
     el.addEventListener('input', () => {
       state.page = 1;

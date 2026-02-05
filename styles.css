@@ -61,6 +61,12 @@ input, select, button {
 select[multiple] { min-height: 5.8rem; }
 button { background: var(--accent); border-color: var(--accent); color: #061122; font-weight: 700; cursor: pointer; }
 button.secondary { background: #263b63; color: #dbe8ff; border-color: #44659f; }
+.hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
 .stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(140px, 1fr));
