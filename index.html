@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Director Packaging Console</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Director Packaging Console</h1>
+        <p>Filter the full director universe by tier, lane, tone, scale, actor links, and availability signals.</p>
+      </div>
+      <div class="stats" id="stats"></div>
+    </header>
+
+    <main class="layout">
+      <aside class="filters">
+        <div class="panel">
+          <h2>Script Match Filters</h2>
+
+          <label>
+            View preset
+            <select id="presetFilter">
+              <option value="all">All directors</option>
+              <option value="boardA">Board A only</option>
+              <option value="workman">Workman pool (T3)</option>
+              <option value="upcoming">Up &amp; Comers (T5/Breakout)</option>
+            </select>
+          </label>
+
+          <label>
+            Search Director / Notes
+            <input id="searchInput" type="search" placeholder="e.g. grounded thriller, IP reinvention" />
+          </label>
+          <label>
+            Tier
+            <select id="tierFilter" multiple></select>
+            <small class="hint">Click once to toggle on/off (no Ctrl/Cmd needed).</small>
+          </label>
+          <label>
+            Primary lane
+            <select id="laneFilter" multiple></select>
+          </label>
+          <label>
+            Tonal DNA
+            <select id="toneFilter" multiple></select>
+          </label>
+          <label>
+            Scale proven
+            <select id="scaleFilter" multiple></select>
+          </label>
+          <label>
+            Budget band typical
+            <select id="budgetFilter" multiple></select>
+          </label>
+          <label>
+            Actor attachment (any)
+            <input id="actorFilter" type="text" placeholder="e.g. Zendaya" />
+          </label>
+          <label>
+            Availability contains
+            <input id="availabilityFilter" type="text" placeholder="e.g. limited, available" />
+          </label>
+
+          <div class="controlsRow">
+            <label>
+              Sort by
+              <select id="sortBy">
+                <option value="nameAsc">Director (A → Z)</option>
+                <option value="nameDesc">Director (Z → A)</option>
+                <option value="tierAsc">Tier (T0 → T5)</option>
+                <option value="tierDesc">Tier (T5 → T0)</option>
+              </select>
+            </label>
+            <label>
+              Rows
+              <select id="pageSize">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+                <option value="99999">All</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="actions">
+            <button id="clearBtn" type="button">Clear filters</button>
+            <button id="exportBtn" type="button" class="secondary">Export filtered CSV</button>
+          </div>
+        </div>
+      </aside>
+
+      <section class="results">
+        <div class="panel resultSummary" id="resultSummary"></div>
+        <div class="panel activeFilters" id="activeFilters"></div>
+
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Director</th>
+                <th>Tier</th>
+                <th>Primary lane</th>
+                <th>Tonal DNA</th>
+                <th>Scale</th>
+                <th>Budget band</th>
+                <th>Actor links</th>
+                <th>Next / Availability</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+
+        <div class="pager" id="pager"></div>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <tr>
+        <td class="directorCell"></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="tagCell"></td>
+        <td class="availabilityCell"></td>
+      </tr>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
